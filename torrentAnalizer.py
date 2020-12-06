@@ -22,6 +22,11 @@ class TorrentAnalizer(object):
         bencode_info = bencode.bencode(self.torrent_tracker['info'])
         self.file_hash = hashlib.sha1(bencode_info).digest()
         self.extract_peers()
+        self.create_pieces()
+
+    def create_pieces(self):
+        piece_hashes = self.torrent_tracker['info']['pieces']
+        piece_hashes = self.torrent_tracker['info']['piece length']
 
     def chunkToSixBytes(self, peerString):
         """
@@ -178,20 +183,19 @@ class Peer(object):
         self.bitField = None
         self.sentInterested = False
         self.socket = socket
-        self.bufferWrite = self.makeHandshakeMsg(infoHash, peer_id)
+        self.bufferWrite = self.make_handshake_message(infoHash, peer_id)
         self.bufferRead = ''
         self.handshake = False
 
-    def makeHandshakeMsg(self, infoHash, peer_id):
+    def make_handshake_message(self, infoHash, peer_id):
         pstrlen = '\x13'
         pstr = 'BitTorrent protocol'
         reserved = '\x00\x00\x00\x00\x00\x00\x00\x00'
        
         handshake = pstrlen+pstr+reserved+str(infoHash)+peer_id
-
         return handshake
 
-    def setBitField(self, payload):
+    def set_bit_field(self, payload):
         # TODO: check to see if valid bitfield. Aka the length of the bitfield 
         # matches with the 'on' bits. 
         # COULD BE MALICOUS and you should drop the connection. 
