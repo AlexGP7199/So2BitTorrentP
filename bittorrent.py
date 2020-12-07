@@ -1,17 +1,15 @@
-import hashlib
-import struct
-import math
-import sys
 import os
+import sys
+import math
 import time
+import struct
+import hashlib
 import bencode
+import logging
 import requests
-import pdb
 
 from bitstring import BitArray
 from torrentAnalizer import TorrentAnalizer
-#from piece import pieces
-import logging
 
 logging = logging.getLogger('bittorrent')
 
@@ -80,13 +78,13 @@ def pipe_requests(peer, torrent_analizer):
         
 def process_message(peer, torrent_analizer, shared_memory):
     #print(len(peer.buffer_read))
-    #pdb.set_trace()
+    #import pdb; pdb.set_trace()
     while len(peer.buffer_read) > 3:
         
         if not peer.handshake:
             #print('not handshake')
             if not check_valid_peer(peer, torrent_analizer.file_hash):
-                #print('false')
+                print('false')
                 return False
             elif len(peer.buffer_read) < 4:
                 print('true')

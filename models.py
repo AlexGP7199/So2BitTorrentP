@@ -5,6 +5,54 @@ from bitstring import BitArray
 
 BLOCK_SIZE = 2**14
 
+class Peer(object):
+    """
+    This object contains the information needed about the peer.
+
+    self.ip - The IP address of this peer.
+    self.port - Port number for this peer.
+    self.choked - sets if the peer is choked or not.
+    self.bitField - What pieces the peer has.
+    self.socket - Socket object
+    self.bufferWrite - Buffer that needs to be sent out to the Peer. When we 
+                       instantiate a Peer object, it is automatically filled 
+                       with a handshake message.
+    self.bufferRead - Buffer that needs to be read and parsed on our end.
+    self.handshake - If we sent out a handshake.
+    """
+    def __init__(self, ip, port, socket, info_hash, peer_id):
+        self.ip = ip
+        self.port = port
+        self.choked = False
+        self.bit_field = None
+        self.sent_interested = False
+        self.socket = socket
+        self.buffer_write = self.make_handshake_message(info_hash, peer_id)
+        self.buffer_read = ''
+        self.handshake = False
+
+    def make_handshake_message(self, info_hash, peer_id):
+        pstrlen = '\x13'
+        pstr = 'BitTorrent protocol'
+        reserved = '\x00\x00\x00\x00\x00\x00\x00\x00'
+       
+        #handshake = pstrlen+pstr+reserved+str(info_hash)+peer_id
+        handshake = pstrlen+pstr+reserved+str(info_hash)+peer_id
+
+        return handshake
+        #return bytes(handshake, 'utf-8')
+
+    def set_bit_field(self, payload):
+        # TODO: check to see if valid bitfield. Aka the length of the bitfield 
+        # matches with the 'on' bits. 
+        # COULD BE MALICOUS and you should drop the connection. 
+        # Need to calculate the length of the bitfield. otherwise, drop 
+        # connection.
+        self.bit_field = BitArray(bytes=payload)
+
+    def fileno(self):
+        return self.socket.fileno()
+    
 class Piece(object):
     """
     Holds all the information about the piece of a file. Holds the hash of that 
