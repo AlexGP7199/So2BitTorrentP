@@ -54,13 +54,13 @@ class TorrentAnalizer(object):
         
         self.current_piece = self.pieces.popleft()
 
-    def chunkToSixBytes(self, peerString):
+    def chunk_to_six_bytes(self, peer_string):
         """
         Function to covert the string to 6 byte chunks,
         4 bytes for the IP address and 2 for the port.
         """
-        for i in range(0, len(peerString), 6):
-            chunk = peerString[i:i+6]
+        for i in range(0, len(peer_string), 6):
+            chunk = peer_string[i:i+6]
             if len(chunk) < 6:
                 import pudb; pudb.set_trace()
                 #pudb.set_trace()
@@ -87,7 +87,7 @@ class TorrentAnalizer(object):
             if response:
                 break
 
-        for data_chunk in self.chunkToSixBytes(response):
+        for data_chunk in self.chunk_to_six_bytes(response):
             ip = []
             port = None
 

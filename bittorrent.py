@@ -75,50 +75,50 @@ def pipe_requests(peer, torrent_analizer):
 def process_message(peer, torrent_analizer, shared_memory):
     while len(peer.buffer_read) > 3:
         if not peer.handshake:
-            if not checkValidPeer(peer, peerMngr.infoHash):
+            if not check_valid_peer(peer, peerMngr.infoHash):
                 return False
-            elif len(peer.bufferRead) < 4:
+            elif len(peer.buffer_read) < 4:
                 return True
 
-        msgSize = convertBytesToDecimal(peer.bufferRead[0:4], 3)
-        if len(peer.bufferRead) == 4:
-            if msgSize == '\x00\x00\x00\x00':
+        msg_size = convert_bytes_to_decimal(peer.buffer_read[0:4], 3)
+        if len(peer.buffer_read) == 4:
+            if msg_size == '\x00\x00\x00\x00':
                 # Keep alive
                 return True
             return True 
         
-        msgCode = int(ord(peer.bufferRead[4:5]))
-        payload = peer.bufferRead[5:4+msgSize]
-        if len(payload) < msgSize-1:
+        msg_code = int(ord(peer.buffer_read[4:5]))
+        payload = peer.buffer_read[5:4+msg_size]
+        if len(payload) < msg_size-1:
             # Message is not complete. Return
             return True
-        peer.bufferRead = peer.bufferRead[msgSize+4:]
-        if not msgCode:
+        peer.buffer_read = peer.buffer_read[msg_size+4:]
+        if not msg_code:
             # Keep Alive. Keep the connection alive.
             continue
-        elif msgCode == 0:
+        elif msg_code == 0:
             # Choked
             peer.choked = True
             continue
-        elif msgCode == 1:
+        elif msg_code == 1:
             # Unchoked! send request
             logging.debug("Unchoked! Finding block")
             peer.choked = False
-            pipeRequests(peer, peerMngr)
-        elif msgCode == 4:
-            handleHave(peer, payload)
-        elif msgCode == 5:
-            peer.setBitField(payload)
-        elif msgCode == 7:
-            index = convertBytesToDecimal(payload[0:4], 3)
-            offset = convertBytesToDecimal(payload[4:8], 3)
+            pipe_requests(peer, peerMngr)
+        elif msg_code == 4:
+            handle_have(peer, payload)
+        elif msg_code == 5:
+            peer.set_bit_field(payload)
+        elif msg_code == 7:
+            index = convert_bytes_to_decimal(payload[0:4], 3)
+            offset = convert_bytes_to_decimal(payload[4:8], 3)
             data = payload[8:]
             if index != peerMngr.curPiece.pieceIndex:
 
                 return True
 
             piece = peerMngr.curPiece           
-            result = piece.addBlock(offset, data)
+            result = piece.add_block(offset, data)
 
             if not result:
                 logging.debug("Not successful adding block. Disconnecting.")
@@ -131,16 +131,16 @@ def process_message(peer, torrent_analizer, shared_memory):
                 shared_mem.put((piece.pieceIndex, piece.blocks))
                 logging.info((OKBLUE + "Downloaded piece: %d " + RESET_SEQ) % piece.pieceIndex)
                 
-            pipeRequests(peer, peerMngr)
+            pipe_requests(peer, peerMngr)
 
-        if not peer.sentInterested:
+        if not peer.sent_interested:
             logging.debug("Bitfield initalized. "
                           "Sending peer we are interested...")
-            peer.bufferWrite = makeInterestedMessage()
-            peer.sentInterested = True
+            peer.buffer_write = make_interested_message()
+            peer.sent_interested = True
     return True
 
-def generateMoreData(myBuffer, shared_mem):
+def generate_more_data(myBuffer, shared_mem):
     while not shared_mem.empty():
         index, data = shared_mem.get()
         if data:
@@ -160,7 +160,7 @@ def writeToMultipleFiles(files, path, peerMngr):
         with open(p, "w") as fileObj:
             length = f['length']
             if not bufferGenerator:
-                bufferGenerator = generateMoreData(myBuffer, peerMngr)
+                bufferGenerator = generate_more_data(myBuffer, peerMngr)
 
             while length > len(myBuffer):
                 myBuffer = next(bufferGenerator)
@@ -168,11 +168,11 @@ def writeToMultipleFiles(files, path, peerMngr):
             fileObj.write(myBuffer[:length])
             myBuffer = myBuffer[length:]
 
-def writeToFile(file, length, peerMngr):
+def write_to_file(file, length, peerMngr):
     fileObj = open('./' + file, 'wb')
     myBuffer = ''
    
-    bufferGenerator = generateMoreData(myBuffer, peerMngr)
+    bufferGenerator = generate_more_data(myBuffer, peerMngr)
 
     while length > len(myBuffer):
         myBuffer = next(bufferGenerator)
@@ -183,6 +183,6 @@ def writeToFile(file, length, peerMngr):
 def write(info, peerMngr):
     if 'files' in info:
         path = './'+ info['name'] + '/'
-        writeToMultipleFiles(info['files'], path, peerMngr)    
+        write_to_multiple_files(info['files'], path, peerMngr)    
     else:
-        writeToFile(info['name'], info['length'], peerMngr)
+        write_to_file(info['name'], info['length'], peerMngr)
