@@ -1,5 +1,6 @@
 import uuid
 import pudb
+import math
 import socket
 import struct
 import random
@@ -11,6 +12,7 @@ import requests
 from collections import deque
 from bitstring import BitArray
 from urllib.parse import urlparse
+from piece import Piece
 
 class TorrentAnalizer(object):
 
@@ -21,19 +23,42 @@ class TorrentAnalizer(object):
         self.torrent_tracker = bencode.bdecode(open(torrent_file, 'rb').read())
         bencode_info = bencode.bencode(self.torrent_tracker['info'])
         self.file_hash = hashlib.sha1(bencode_info).digest()
+        self.number_pieces = 0
+        self.total_length = 0
+        self.completed_pieces = 0
+        self.current_piece = None
         self.extract_peers()
-        self.create_pieces()
+        #self.create_pieces()
 
     def create_pieces(self):
         piece_hashes = self.torrent_tracker['info']['pieces']
-        piece_hashes = self.torrent_tracker['info']['piece length']
+        piece_length = self.torrent_tracker['info']['piece length']
+
+        if 'files' in self.torrent_tracker['info']:
+            files = self.torrent_tracker['info']['files']
+            total_length = sum([file['lenght'] for file in files])
+            self.number_pieces = int(math.ceil(float(total_length) / piece_length))
+        else:
+            total_length = self.torrent_tracker['info']['length']
+            self.number_pieces = int(math.ceil(float(total_length) / piece_length))
+
+        counter = total_length
+        self.total_length = total_length
+        for index in range(self.number_pieces):
+            if index == self.number_pieces - 1:
+                self.pieces.append(Piece(index, counter, piece_hashes[0:20]))
+            else:
+                self.pieces.append(Piece(index, piece_length, piece_hashes[0:20]))
+                counter -= piece_length
+                piece_hashes = piece_hashes[20:]
+        
+        self.current_piece = self.pieces.popleft()
 
     def chunkToSixBytes(self, peerString):
         """
         Function to covert the string to 6 byte chunks,
         4 bytes for the IP address and 2 for the port.
         """
-        print("peer string: ", peerString)
         for i in range(0, len(peerString), 6):
             chunk = peerString[i:i+6]
             if len(chunk) < 6:
@@ -160,6 +185,19 @@ class TorrentAnalizer(object):
         response = self.send_message(connection, udp_socket, message, transaction_id, action, 20)
         
         return response[20:]
+    
+    def is_download_complete(self):
+        return self.completed_pieces == self.number_pieces
+    
+    def find_next_block(self, peer):
+        for block_index in range(self.current_piece.num_blocks):
+            if not self.current_piece.block_tracker[block_index]:
+                if block_index == self.current_piece.num_blocks - 1:
+                    size = self.current_piece.calculate_last_size()
+                else:
+                    size = piece.BLOCK_SIZE
+                return (self.current_piece.piece_index, block_index * piece.BLOCK_SIZE, size)
+        return None
 
 class Peer(object):
     """
@@ -176,23 +214,24 @@ class Peer(object):
     self.bufferRead - Buffer that needs to be read and parsed on our end.
     self.handshake - If we sent out a handshake.
     """
-    def __init__(self, ip, port, socket, infoHash, peer_id):
+    def __init__(self, ip, port, socket, info_hash, peer_id):
         self.ip = ip
         self.port = port
         self.choked = False
-        self.bitField = None
-        self.sentInterested = False
+        self.bit_field = None
+        self.sent_interested = False
         self.socket = socket
-        self.bufferWrite = self.make_handshake_message(infoHash, peer_id)
-        self.bufferRead = ''
+        self.buffer_write = self.make_handshake_message(info_hash, peer_id)
+        self.buffer_read = ''
         self.handshake = False
 
-    def make_handshake_message(self, infoHash, peer_id):
+    def make_handshake_message(self, info_hash, peer_id):
         pstrlen = '\x13'
         pstr = 'BitTorrent protocol'
         reserved = '\x00\x00\x00\x00\x00\x00\x00\x00'
        
-        handshake = pstrlen+pstr+reserved+str(infoHash)+peer_id
+        handshake = pstrlen+pstr+reserved+str(info_hash)+peer_id
+        print(handshake)
         return handshake
 
     def set_bit_field(self, payload):
@@ -201,7 +240,7 @@ class Peer(object):
         # COULD BE MALICOUS and you should drop the connection. 
         # Need to calculate the length of the bitfield. otherwise, drop 
         # connection.
-        self.bitField = BitArray(bytes=payload)
+        self.bit_field = BitArray(bytes=payload)
 
     def fileno(self):
         return self.socket.fileno()
