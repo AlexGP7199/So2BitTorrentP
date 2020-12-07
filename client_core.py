@@ -4,7 +4,7 @@ import sys
 import multiprocessing
 import logging
 
-#import bittorrent
+import bittorrent
 from torrentAnalizer import TorrentAnalizer
 
 class ClientCore(multiprocessing.Process):
@@ -17,10 +17,10 @@ class ClientCore(multiprocessing.Process):
         self.thread_id = thread_id
         self.name = name
         self.shared_memory = shared_memory
-        # if debug:
-        #     logging.basicConfig(level=logging.DEBUG)
-        # elif info:
-        #     logging.basicConfig(level=logging.INFO)
+        if debug:
+            logging.basicConfig(level=logging.DEBUG)
+        elif info:
+            logging.basicConfig(level=logging.INFO)
         self.torrent_analizer = torrent_analizer
     
     def connect(self):
@@ -44,6 +44,11 @@ class ClientCore(multiprocessing.Process):
             read = self.torrent_analizer.peers[:]
             read_list, write_list, error = select.select(read, write, [])
             
+            # print("read")
+            # print(read)
+            # print("write")
+            # print(write)
+
             for peer in write_list:
                 send_message = peer.buffer_write
                 try:
@@ -55,18 +60,26 @@ class ClientCore(multiprocessing.Process):
                 peer.buffer_write = ''
 
             for peer in read_list:
+                
                 try:
-                    peer.buffer_read += peer.socket.recv(1028)
+                    peer.socket.recv(1028)
+                    print(peer.buffer_read)
+                    #print(peer.socket.recv(1028))
+                    #peer.buffer_read += str(peer.socket.recv(1028))
+                    #peer.buffer_read += peer.socket.recv(1028)
                 except socket.error as error:
                     logging.debug(error)
                     self.remove_peer(peer)
                     continue
-                result = bittorrent.process_message(peer, self.peerMngr, self.shared_mem)
+                #print('llego aqui')
+                #print(peer.buffer_read)
+                #print(len(peer.buffer_read))
+                result = bittorrent.process_message(peer, self.torrent_analizer, self.shared_memory)
                 if not result:
                     # Something went wrong with peer. Discconnect
                     peer.socket.close()
-                    self.removePeer(peer)
+                    self.remove_peer(peer)
 
-            if len(self.peerMngr.peers) <= 0:
+            if len(self.torrent_analizer.peers) <= 0:
                 raise Exception("NO MORE PEERS")
-        bittorrent.write(self.peerMngr.tracker['info'], self.shared_mem)
+        bittorrent.write(self.torrent_analizer.tracker['info'], self.shared_memory)

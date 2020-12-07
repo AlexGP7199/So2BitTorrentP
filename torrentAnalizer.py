@@ -28,7 +28,7 @@ class TorrentAnalizer(object):
         self.completed_pieces = 0
         self.current_piece = None
         self.extract_peers()
-        #self.create_pieces()
+        self.create_pieces()
 
     def create_pieces(self):
         piece_hashes = self.torrent_tracker['info']['pieces']
@@ -36,7 +36,7 @@ class TorrentAnalizer(object):
 
         if 'files' in self.torrent_tracker['info']:
             files = self.torrent_tracker['info']['files']
-            total_length = sum([file['lenght'] for file in files])
+            total_length = sum([file['length'] for file in files])
             self.number_pieces = int(math.ceil(float(total_length) / piece_length))
         else:
             total_length = self.torrent_tracker['info']['length']
@@ -230,9 +230,11 @@ class Peer(object):
         pstr = 'BitTorrent protocol'
         reserved = '\x00\x00\x00\x00\x00\x00\x00\x00'
        
+        #handshake = pstrlen+pstr+reserved+str(info_hash)+peer_id
         handshake = pstrlen+pstr+reserved+str(info_hash)+peer_id
-        print(handshake)
-        return handshake
+
+        #return handshake
+        return bytes(handshake, 'utf-8')
 
     def set_bit_field(self, payload):
         # TODO: check to see if valid bitfield. Aka the length of the bitfield 
