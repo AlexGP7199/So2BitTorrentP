@@ -17,17 +17,12 @@ OKBLUE = '\033[94m'
 RESET_SEQ = "\033[0m"
 
 HEADER_SIZE = 28 # This is just the pstrlen+pstr+reserved
-# TODO make the parser stateless and a parser for each object 
 
 def check_valid_peer(peer, info_hash):
     """
     Check to see if the info hash from the peer matches with the one we have 
     from the .torrent file.
     """
-    print('peer info hash')
-    print(peer.buffer_read[HEADER_SIZE:HEADER_SIZE+len(info_hash)])
-    print('info hash')
-    print(info_hash)
 
     peer_info_hash = peer.buffer_read[HEADER_SIZE:HEADER_SIZE+len(info_hash)]
     
@@ -144,8 +139,7 @@ def process_message(peer, torrent_analizer, shared_memory):
             pipe_requests(peer, torrent_analizer)
 
         if not peer.sent_interested:
-            #logging.debug("Bitfield initalized. "
-                          #"Sending peer we are interested...")
+            logging.debug("Bitfield initalized, =Sending peer we are interested...")
             peer.buffer_write = make_interested_message()
             peer.sent_interested = True
     return True

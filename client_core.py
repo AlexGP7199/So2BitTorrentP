@@ -28,9 +28,9 @@ class ClientCore(multiprocessing.Process):
             try:
                 peer.socket.connect((peer.ip, peer.port))
                 print('completed')
-            except socket.error: #as error:
-                #logging.debug('Connect error.....')
-                #logging.debug(error)
+            except socket.error as error:
+                logging.debug('Connect error.....')
+                logging.debug(error)
                 # We are going to ignore the error, since we are turing blocking
                 # off. Since we are returning before connect can return a 
                 # message, it will throw an error. 
@@ -46,18 +46,6 @@ class ClientCore(multiprocessing.Process):
             write = [x for x in self.torrent_analizer.peers if x.buffer_write != '']
             read = self.torrent_analizer.peers[:]
             read_list, write_list, error = select.select(read, write, [])
-            
-            # for peer in read:
-            #     print(peer.ip)
-            #     print(peer.port)
-            #     print(peer.choked)
-            #     print(peer.bit_field)
-            #     print(peer.sent_interested)
-            #     #print(peer.socket)
-            #     print(peer.buffer_write)
-            #     print(peer.buffer_read)
-            #     print(peer.handshake)
-            #     print('\n')
 
             for peer in write_list:
                 send_message = peer.buffer_write
@@ -69,22 +57,19 @@ class ClientCore(multiprocessing.Process):
                     continue 
                 peer.buffer_write = ''
 
-            # for peer in read_list:
-                
-            #     try:
-            #         print(peer.socket.recv(1028))
-            #         #peer.buffer_read += str(peer.socket.recv(1028))
-            #         #peer.buffer_read += peer.socket.recv(1028)
-            #     except socket.error as error:
-            #         logging.debug(error)
-            #         self.remove_peer(peer)
-            #         continue
+            for peer in read_list:
+                try:
+                    peer.buffer_read += str(peer.socket.recv(1028))
+                except socket.error as error:
+                    logging.debug(error)
+                    self.remove_peer(peer)
+                    continue
 
-            #     result = bittorrent.process_message(peer, self.torrent_analizer, self.shared_memory)
-            #     if not result:
-            #         # Something went wrong with peer. Discconnect
-            #         peer.socket.close()
-            #         self.remove_peer(peer)
+                result = bittorrent.process_message(peer, self.torrent_analizer, self.shared_memory)
+                if not result:
+                    # Something went wrong with peer. Discconnect
+                    peer.socket.close()
+                    self.remove_peer(peer)
 
             if len(self.torrent_analizer.peers) <= 0:
                 raise Exception("NO MORE PEERS")

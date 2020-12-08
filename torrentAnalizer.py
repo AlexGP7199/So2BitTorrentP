@@ -18,10 +18,32 @@ from urllib.parse import urlparse
 logging = logging.getLogger('TorrentAnalizer')
 
 class TorrentAnalizer(object):
+    """
+    Holds the tracker information and the list of peers.
+    """
 
     def __init__(self, torrent_file):
-        #self.id = '0987654321098765432-'
-        self.id = '=[20126756,20175697]'
+        """
+        Initalizes the TorrentAnalizer, which handles all the peers it is connected to.
+
+        Input:
+        torrent_file -- takes in a .torrent tracker file.
+
+        Instance Variables:
+        self.id                  -- The id that we give to other peers, we use our ids to create it.
+        self.peers               -- List of peers I am currently connected to. Contains 
+                                    Peer Objects
+        self.pieces              -- List of Piece objects that store the actual data we
+                                    we are downloading.
+        self.torrent_tracker     -- The decoded tracker dictionary.
+        self.file_hash           -- SHA1 hash of the file we are downloading.
+        self.number_pieces       -- The number of pieces of the file.
+        self.total_length        -- The total file length.
+        self.completed_pieces    -- Number of pieces completed.
+        self.current_piece       -- Piece is being downloaded.
+        """
+
+        self.id = '=[20126756,20175697]' # group ids
         self.peers = []
         self.pieces = deque([])
         self.torrent_tracker = bencode.bdecode(open(torrent_file, 'rb').read())
@@ -67,7 +89,6 @@ class TorrentAnalizer(object):
             chunk = peer_string[i:i+6]
             if len(chunk) < 6:
                 import pudb; pudb.set_trace()
-                #pudb.set_trace()
                 raise IndexError("Size of the chunk was not six bytes.")
             yield chunk
 
@@ -120,8 +141,6 @@ class TorrentAnalizer(object):
             response = socket.recv(2048)
         except socket.timeout as err:
         #except Exception as err:
-            #print(err)
-            #print("Connecting again...")
             logging.debug(err)
             logging.debug("Connecting again...")
             return self.send_message(connection, socket, message, transaction_id, action, size)
