@@ -5,7 +5,7 @@ import logging
 import bittorrent
 import multiprocessing
 
-from torrentAnalizer import TorrentAnalizer
+from torrent_analizer import TorrentAnalizer
 
 class ClientCore(multiprocessing.Process):
     """ 

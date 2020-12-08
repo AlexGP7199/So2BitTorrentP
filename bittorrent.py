@@ -9,7 +9,7 @@ import logging
 import requests
 
 from bitstring import BitArray
-from torrentAnalizer import TorrentAnalizer
+from torrent_analizer import TorrentAnalizer
 
 logging = logging.getLogger('bittorrent')
 
